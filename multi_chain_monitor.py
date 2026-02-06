@@ -30,14 +30,15 @@ TRANSFER_TOPIC = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523
 class ChainConfig:
     name: str
     chain_id: int
-    wss: str
     rpc_url: str
     tokens: Dict[str, Dict]  # address -> {symbol, decimals, price_usd}
+    wss: Optional[str] = None
+    poll_interval: float = 2.0  # seconds between HTTP polls (only used when wss is None)
 
 
 # EVM chains configuration with top tokens
 CHAINS: List[ChainConfig] = [
-    # Ethereum Mainnet
+    # Ethereum Mainnet (alt: api-ethereum-mainnet-reth for Reth client)
     ChainConfig(
         name="Ethereum",
         chain_id=1,
@@ -71,7 +72,7 @@ CHAINS: List[ChainConfig] = [
             "0xba100000625a3754423978a60c9317c58a424e3d": {"symbol": "BAL", "decimals": 18, "price_usd": 3.0},
         }
     ),
-    # Arbitrum
+    # Arbitrum (alt: api-arbitrum-mainnet-full for Full Node)
     ChainConfig(
         name="Arbitrum",
         chain_id=42161,
@@ -697,6 +698,53 @@ CHAINS: List[ChainConfig] = [
             "0x70a1a8f6b90e0b6c5f8c7a8f9e8f0d1c2b3a4e5f": {"symbol": "PLI", "decimals": 18, "price_usd": 0.05},
         }
     ),
+    # Avalanche C-Chain (HTTPS only - no WSS available)
+    ChainConfig(
+        name="Avalanche",
+        chain_id=43114,
+        rpc_url="https://api-avalanche-mainnet-archive.n.dwellir.com/e5433693-bdd2-4168-851b-acaf16f10400/ext/bc/C/rpc",
+        tokens={
+            "0xb31f66aa3c1e785363f0875a1b74e27b85fd66c7": {"symbol": "WAVAX", "decimals": 18, "price_usd": 25.0},
+            "0xb97ef9ef8734c71904d8002f8b6bc66dd9c48a6e": {"symbol": "USDC", "decimals": 6, "price_usd": 1.0},
+            "0x9702230a8ea53601f5cd2dc00fdbc13d4df4a8c7": {"symbol": "USDT", "decimals": 6, "price_usd": 1.0},
+            "0x49d5c2bdffac6ce2bfdb6640f4f80f226bc10bab": {"symbol": "WETH.e", "decimals": 18, "price_usd": 2500.0},
+            "0x50b7545627a5162f82a992c33b87adc75187b218": {"symbol": "WBTC.e", "decimals": 8, "price_usd": 95000.0},
+            "0xd586e7f844cea2f87f50152665bcbc2c279d8d70": {"symbol": "DAI.e", "decimals": 18, "price_usd": 1.0},
+            "0x2b2c81e08f1af8835a78bb2a90ae924ace0ea4be": {"symbol": "sAVAX", "decimals": 18, "price_usd": 27.0},
+            "0xa7d7079b0fead91f3e65f86e8915cb59c1a4c664": {"symbol": "USDC.e", "decimals": 6, "price_usd": 1.0},
+            "0x152b9d0fdc40c096de345726606e39f0957e02ef": {"symbol": "BTCb", "decimals": 8, "price_usd": 95000.0},
+            "0x5947bb275c521040051d82396192181b413227a3": {"symbol": "LINK.e", "decimals": 18, "price_usd": 18.0},
+        },
+        poll_interval=2.0,
+    ),
+    # Boba (HTTPS only - no WSS available)
+    ChainConfig(
+        name="Boba",
+        chain_id=288,
+        rpc_url="https://api-boba-mainnet.n.dwellir.com/e5433693-bdd2-4168-851b-acaf16f10400",
+        tokens={
+            "0xdeaddeaddeaddeaddeaddeaddeaddeaddead0000": {"symbol": "WETH", "decimals": 18, "price_usd": 2500.0},
+            "0x66a2a913e447d6b4bf33efbec43aaef87890fbbc": {"symbol": "USDC", "decimals": 6, "price_usd": 1.0},
+            "0x5de1677344d3cb0d7d465c10b72a8f60699c062d": {"symbol": "USDT", "decimals": 6, "price_usd": 1.0},
+            "0xa18bf3994c0cc6e3b63ac420308e5383f53120d7": {"symbol": "BOBA", "decimals": 18, "price_usd": 0.3},
+            "0xf74195bb8a5cf652411867c5c2c5b8c2a402be35": {"symbol": "DAI", "decimals": 18, "price_usd": 1.0},
+        },
+        poll_interval=5.0,
+    ),
+    # Immutable zkEVM (HTTPS only - no WSS available)
+    ChainConfig(
+        name="Immutable",
+        chain_id=13371,
+        rpc_url="https://api-immutable-zkevm-mainnet.n.dwellir.com/e5433693-bdd2-4168-851b-acaf16f10400",
+        tokens={
+            "0x3a0c2ba54d6cbd3121d49968c9e3658e05dbbf58": {"symbol": "WIMX", "decimals": 18, "price_usd": 1.5},
+            "0x6de8acc0d406837030ce4dd28e7c08c5a96a30d2": {"symbol": "USDC", "decimals": 6, "price_usd": 1.0},
+            "0x52a6c53869ce09a731cd772f245b97a4401d3348": {"symbol": "WETH", "decimals": 18, "price_usd": 2500.0},
+            "0xbf7f0f4cbc27ddf9dcefdd58c094f2014e0c77c0": {"symbol": "GOG", "decimals": 18, "price_usd": 0.05},
+            "0xa44151489861fe9e3055d95adc98fbd462b948e7": {"symbol": "USDT", "decimals": 6, "price_usd": 1.0},
+        },
+        poll_interval=3.0,
+    ),
 ]
 
 
@@ -757,7 +805,7 @@ async def send_to_webhook(chain: ChainConfig, transfer: dict, usd_value: float, 
         "s": transfer["sender"],
         "contract": transfer["contract"],
         "chain_id": chain.chain_id,
-        "wss": chain.wss,
+        "wss": chain.wss or "",
         "rpc_url": chain.rpc_url,
     }
 
@@ -850,15 +898,88 @@ async def monitor_chain(chain: ChainConfig):
             await asyncio.sleep(10)
 
 
+async def monitor_chain_http(chain: ChainConfig):
+    """Monitor a chain for token transfers via HTTP polling (for chains without WSS)."""
+    global http_session
+
+    tokens = {k.lower(): v for k, v in chain.tokens.items()}
+    last_block = None
+
+    print(f"[{chain.name}] Starting HTTP polling (interval: {chain.poll_interval}s)...")
+
+    while True:
+        try:
+            # Get current block number
+            block_req = {
+                "jsonrpc": "2.0", "id": 1,
+                "method": "eth_blockNumber", "params": []
+            }
+            async with http_session.post(chain.rpc_url, json=block_req, timeout=10) as resp:
+                block_result = await resp.json()
+                current_block = block_result.get("result")
+
+            if not current_block:
+                await asyncio.sleep(chain.poll_interval)
+                continue
+
+            if last_block is None:
+                print(f"[{chain.name}] HTTP poll started at block {current_block}")
+                last_block = current_block
+                await asyncio.sleep(chain.poll_interval)
+                continue
+
+            from_block = hex(int(last_block, 16) + 1)
+            if int(from_block, 16) > int(current_block, 16):
+                await asyncio.sleep(chain.poll_interval)
+                continue
+
+            # Get transfer logs for new blocks
+            log_req = {
+                "jsonrpc": "2.0", "id": 2,
+                "method": "eth_getLogs",
+                "params": [{
+                    "fromBlock": from_block,
+                    "toBlock": current_block,
+                    "address": list(tokens.keys()),
+                    "topics": [TRANSFER_TOPIC]
+                }]
+            }
+            async with http_session.post(chain.rpc_url, json=log_req, timeout=30) as resp:
+                log_result = await resp.json()
+
+            logs = log_result.get("result", [])
+            if isinstance(logs, list):
+                for log in logs:
+                    transfer = decode_transfer_log(log)
+                    if not transfer:
+                        continue
+                    val = calculate_usd_value(tokens, transfer["contract"], transfer["amount_raw"])
+                    if val is None:
+                        continue
+                    usd_value, symbol = val
+                    if usd_value >= MIN_USD_VALUE:
+                        await send_to_webhook(chain, transfer, usd_value, symbol)
+
+            last_block = current_block
+            await asyncio.sleep(chain.poll_interval)
+
+        except Exception as e:
+            print(f"[{chain.name}] HTTP poll error: {e}. Retrying in 10s...")
+            await asyncio.sleep(10)
+
+
 async def main():
     """Main entry point."""
     global http_session
+
+    wss_chains = [c for c in CHAINS if c.wss]
+    http_chains = [c for c in CHAINS if not c.wss]
 
     print("=" * 70)
     print("Multi-Chain Token Transfer Monitor")
     print(f"Webhooks: {len(WEBHOOK_URLS)}")
     print(f"Min Value: ${MIN_USD_VALUE}")
-    print(f"Chains: {len(CHAINS)}")
+    print(f"Chains: {len(CHAINS)} ({len(wss_chains)} WSS + {len(http_chains)} HTTP)")
     print("=" * 70)
 
     # Create HTTP session
@@ -866,7 +987,12 @@ async def main():
 
     try:
         # Start all chain monitors concurrently
-        tasks = [monitor_chain(chain) for chain in CHAINS]
+        tasks = []
+        for chain in CHAINS:
+            if chain.wss:
+                tasks.append(monitor_chain(chain))
+            else:
+                tasks.append(monitor_chain_http(chain))
         await asyncio.gather(*tasks)
     finally:
         await http_session.close()
